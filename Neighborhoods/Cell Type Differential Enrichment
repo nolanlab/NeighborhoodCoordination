@@ -1,0 +1,171 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# import statsmodels.api as sm\n",
+    "# from statsmodels.stats.multitest import multipletests as mpt\n",
+    "# import numpy as np\n",
+    "import pandas as pd\n",
+    "# from matplotlib import pyplot as plt\n",
+    "# import itertools\n",
+    "# import seaborn as sns\n",
+    "# %pylab inline"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import numpy"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "'''\n",
+    "preparing dataframes (best to do this on your data):\n",
+    "ct_freq should be a df of cell type frequencies per patient\n",
+    "\n",
+    "all_freqs should have cols patient, neighborhood, cell types, giving\n",
+    "the frequency of cells of that type in that neighborhood in that patient\n",
+    "'''\n",
+    "ct_freq = pd.read_csv('cell_type_freqs_per_patient')\n",
+    "all_freqs = pd.read_csv('all_freqs')\n",
+    "\n",
+    "#you will need to set the following with your own data\n",
+    "neighborhood_col = 'neighborhood10'\n",
+    "nbs = [0,2,3,4,5,6,7,8,9]\n",
+    "patients = range(1,36) \n",
+    "group = pd.Series([0]*15+ [1]*20) \n",
+    "cells = ['B cells','T cells']"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "def normalize(X):\n",
+    "    arr = np.array(X.fillna(0).values)\n",
+    "    return pd.DataFrame(np.log2(1e-3 + arr/arr.sum(axis =1, keepdims = True)), index = X.index.values, columns = X.columns).fillna(0)\n"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "# data prep\n",
+    "# normalized overall cell type frequencies\n",
+    "X_cts = normalize(ct_frq.reset_index().set_index('patients').loc[patients,cells])\n",
+    "\n",
+    "# normalized neighborhood specific cell type frequencies\n",
+    "df_list = []\n",
+    "\n",
+    "for nb in nbs:\n",
+    "    cond_nb = all_freqs.loc[all_freqs[neighborhood_col]==nb,cells].rename({col: col+'_'+str(nb) for col in cells},axis = 1).set_index('patients')\n",
+    "    df_list.append(normalize(cond_nb))\n",
+    "\n",
+    "X_cond_nb = pd.concat(df_list,axis = 1).loc[patients]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {
+    "collapsed": true
+   },
+   "outputs": [],
+   "source": [
+    "#differential enrichment for all cell subsets\n",
+    "changes = {}\n",
+    "nbs =[0, 2, 3, 4, 6, 7, 8, 9]\n",
+    "for col in cells:\n",
+    "    for nb in nbs:\n",
+    "        #build a design matrix with a constant, group 0 or 1 and the overall frequencies\n",
+    "        X = pd.concat([X_cts[col], group.astype('int'),pd.Series(np.ones(len(group)), index = group.index.values)],axis = 1).values\n",
+    "        if col+'_%d'%nb in X_condnb_all.columns:\n",
+    "            #set the neighborhood specific ct freqs as the outcome\n",
+    "            Y = X_cond_nb[col+'_%d'%nb].values\n",
+    "            X = X[~pd.isna(Y)]\n",
+    "            Y = Y[~pd.isna(Y)]\n",
+    "            #fit a linear regression model\n",
+    "            results = sm.OLS(Y,X).fit()\n",
+    "            #find the params and pvalues for the group coefficient\n",
+    "            changes[(col,nb)] = (results.pvalues[1], results.params[1])\n",
+    "        \n",
+    "\n",
+    "#make a dataframe with coeffs and pvalues\n",
+    "dat = (pd.DataFrame(changes).loc[1].unstack())\n",
+    "dat = pd.DataFrame(np.nan_to_num(dat.values),index = dat.index, columns = dat.columns).T.sort_index(ascending=True).loc[:,X_cts.columns]\n",
+    "pvals = (pd.DataFrame(changes).loc[0].unstack()).T.sort_index(ascending=True).loc[:,X_cts.columns]\n",
+    "\n",
+    "#this is where you should correct pvalues for multiple testing \n",
+    "\n",
+    "\n",
+    "#plot as heatmap\n",
+    "f, ax = plt.subplots(figsize = (20,10))\n",
+    "g = sns.heatmap(dat,cmap = 'bwr', vmin = -1, vmax = 1,cbar=False,ax = ax)\n",
+    "for a,b in zip(*np.where (pvals<0.05)):\n",
+    "    plt.text(b+.5,a+.55,'*',fontsize = 20,ha = 'center',va = 'center')\n",
+    "plt.tight_layout()\n"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.6.10"
+  },
+  "latex_envs": {
+   "LaTeX_envs_menu_present": true,
+   "autoclose": false,
+   "autocomplete": true,
+   "bibliofile": "biblio.bib",
+   "cite_by": "apalike",
+   "current_citInitial": 1,
+   "eqLabelWithNumbers": true,
+   "eqNumInitial": 1,
+   "hotkeys": {
+    "equation": "Ctrl-E",
+    "itemize": "Ctrl-I"
+   },
+   "labels_anchors": false,
+   "latex_user_defs": false,
+   "report_style_numbering": false,
+   "user_envs_cfg": false
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
