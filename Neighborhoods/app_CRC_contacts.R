@@ -6,6 +6,8 @@
 #
 #    http://shiny.rstudio.com/
 #
+# Originally implemented by Yury Goltsev goltsev@stanford.edu as described in https://doi.org/10.1016/j.cell.2018.07.010
+# Shiny app implemented by Janos Demeter jdemeter@stanford.edu
 
 pkgs <- list('shiny' = '1.3.2',
              'shinyFiles' = '0.7.3',
