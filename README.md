@@ -31,3 +31,5 @@ o	shapely
 
 6.	Cell Type Differential Enrichment:  This notebook allows a user to identify cell types that are differentially enriched within specific cellular neighborhoods across a set of conditions or clinical groups.  
 
+7.  app_CRC_contacts.R:  A Shiny application for computing contacts between different cell types.
+
