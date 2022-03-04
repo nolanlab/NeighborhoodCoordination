@@ -18,14 +18,16 @@ o	seaborn
 o	scikitlearn
 o	tensorly
 o	shapely
+
+
 ## Functions
-1.	main_fcs/main_fcs_csv:  This is the data that we use in our publication and helps a user walk through these functions.  This pipeline begins after Cell Types have been identified.  The link to this file can be found via Mendeley Data, as indicated in our publication’s Supplementary Material.
+1.	The single-cell file (with patient, TMA core, neighborhood10 and ClusterName annotations) is in the Mendeley data link provided in the manuscript. Any time you see read in of 'cells2_salil', this can be replaced with read in of the Mendeley data file.
 
 2.	Neighborhood Identification:  This notebook walks a user through identifying Cellular Neighborhoods in high parameter imaging data as described in our publication.
 
 3.	Voronoi Generation:  This notebook helps visualize the Cellular Neighborhoods on the tissue and allows the user to overlay a collection of cells over these neighborhoods to explore their spatial distribution.
 
-4.	Tensor Decomposition:  This notebook describes how to perform tensor decomposition after each single cell has been allocated to a Cellular Neighborhood and Cell Type.
+4.	tensord_decomposition_cleaned_up:  This notebook describes how to perform tensor decomposition after each single cell has been allocated to a Cellular Neighborhood and Cell Type. This has been updated to start from the Mendeley upload.
 
 5.	Neighborhood Mixing:  This notebook allows the user to describe the spatial contacts between two Cellular Neighborhoods of interest.  
 
