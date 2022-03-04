@@ -10,14 +10,14 @@ The following describes how to navigate the code we provide in the “Neighborho
 We recommend using the free package manager Anaconda (https://www.anaconda.com) to help install the packages required to use these scripts.
 •	Jupyter is most easily installed through Anaconda.  Otherwise, one can follow the instructions here  https://jupyter.org/
 •	The used scripts require very few dependencies.  Packages required:
-o	statsmodels
-o	numpy
-o	pandas
-o	jupyter
-o	seaborn
-o	scikitlearn
-o	tensorly
-o	shapely
+o	statsmodels (0.11.1)
+o	numpy (1.18.1)
+o	pandas (1.0.1)
+o	jupyter (1.0.0)
+o	seaborn (0.9.0)
+o	scikitlearn (0.22.1)
+o	tensorly (0.6.0)
+o	shapely (1.7.0)
 
 
 ## Functions
