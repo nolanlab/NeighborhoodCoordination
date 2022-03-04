@@ -27,7 +27,7 @@ o	shapely
 
 3.	Voronoi Generation:  This notebook helps visualize the Cellular Neighborhoods on the tissue and allows the user to overlay a collection of cells over these neighborhoods to explore their spatial distribution.
 
-4.	tensord_decomposition_cleaned_up:  This notebook describes how to perform tensor decomposition after each single cell has been allocated to a Cellular Neighborhood and Cell Type. This has been updated to start from the Mendeley upload.
+4.	tensor_decomposition_cleaned_up:  This notebook describes how to perform tensor decomposition after each single cell has been allocated to a Cellular Neighborhood and Cell Type. This has been updated to start from the Mendeley upload.
 
 5.	Neighborhood Mixing:  This notebook allows the user to describe the spatial contacts between two Cellular Neighborhoods of interest.  
 
