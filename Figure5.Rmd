@@ -1,0 +1,431 @@
+---
+title: "Figure_5"
+author: "Max Haist"
+date: "2024-11-03"
+output: html_document
+---
+### Load packages
+```{r}
+### Load packages
+library("survminer")
+library ("survival")
+library(survival)
+library(survivalAnalysis)
+library(survminer)
+library(tidyverse)
+library(tidytidbits)
+library(dplyr)
+
+required_packages <- c(
+  "tidyverse", "ggpubr", "survminer", "survival", "rstatix", "readxl", "ggprism", "reshape2", "forestplot", "gridExtra",
+  "circlize", "RColorBrewer", "ComplexHeatmap", "pheatmap", "matrixStats", "caret", "here", "tidystats")
+
+for (package in required_packages) {
+  if (package %in% rownames(installed.packages()) == FALSE) {
+    install.packages(package)
+  }
+}
+
+# Load required R packages
+library(tidyverse)
+library(ggpubr)
+library(survminer)
+library(survival)
+library(survivalAnalysis)
+library(rstatix)
+library(readxl)
+library(ggprism)
+library(reshape2)
+library(forestplot)
+library(gridExtra)
+library(circlize)
+library(RColorBrewer)
+library(ComplexHeatmap)
+library(pheatmap)
+library(matrixStats)
+library(caret)
+library(here)
+library(tidystats)
+
+here(getwd())
+
+# Custom functions
+source("Functions/five_point_sum.R")
+source("Functions/KM_plot_prep.R")
+source("Functions/calc_compartment_percent.R")
+```
+
+### Define colors
+```{r}
+tissue_compartments = c("Stroma" = "#009E73",  "Immune" = "#56B4E9",  "Tumor" = "red", "Epithelial" = "#F0E442")
+
+colors_cell_types_lowres_new = c('B_lymphocytes'= 'royalblue',"T_lymphocytes"= "#e6ab02","epithelial"="#d95f02","other_leukocytes" = "#7570b3", "myeloid_cells" = "tomato","stroma"= "#1b9e77","tumor" = "grey")#e6ab02
+
+colors_cell_highres = c("stroma" = "darkgreen",
+ "vessel"= "red",
+ "PMN"= "cyan",
+ "DC"= "magenta",
+ "FAP_CAF"= "orange",
+ "CAF" = "brown",
+ "M2_macrophages"= "salmon",
+ "tumor"= "black",
+ "VSMC"= "darkred",
+ 'epithelial'= 'gray',
+ 'CD8T'= 'skyblue',
+ 'M1_macrophages'= 'gold',
+ 'CD4T'= 'lightgreen',
+ 'Treg'= 'yellowgreen',
+ 'follicular_B'= 'royalblue',
+ "marginal_B" = "darkblue",
+ 'NK'= 'orchid',
+ "lymphatics" = "green",
+ 'TH1'= 'bisque',
+ 'CD4TFH'= 'goldenrod',
+ 'B'= 'blue',
+ "plasma" = "purple",
+ 'FDC'= 'darkorange',
+ "cDC1" = "yellow",
+ "CD73_CAF" = "orangered", 
+ "leukocytes" = "navy")
+
+colors_cell_common = c("stroma" = "darkgreen",
+ "vessel"= "red",
+ "PMN"= "cyan",
+ "DC"= "magenta",
+ "CAF"= "orange",
+ "macrophages"= "salmon",
+ "tumor"= "black",
+ "VSMC"= "darkred",
+ 'epithelial'= 'gray',
+ 'CD8T'= 'skyblue',
+ 'CD4T'= 'lightgreen',
+ 'Treg'= 'yellowgreen',
+ 'NK'= 'orchid',
+ "lymphatics" = "green",
+ 'B'= 'royalblue',
+ "cDC1" = "yellow",
+ "leukocytes" = "navy",
+ "plasma" = "purple")
+
+colors_cn = c("Vessel-enriched stroma" = 'darkgreen',
+ "CAF-enriched stroma" = 'orange',
+ 'Granulocyte-enriched'= 'cyan',
+ 'Macrophage-enriched immune infiltrate'= 'sienna',
+ 'T cell priming and activation'= 'lightgreen',
+ 'B cell priming zone'= 'royalblue',
+ 'Follicle'= 'blue',
+ 'Tumor boundary'= 'grey',
+ 'Epithelium'= 'magenta',
+ 'Bulk tumor'= 'navy',
+ 'Plasma-cell enriched immune infiltrate'= 'purple'
+)
+
+colors_cn = c("Vessel_enriched_stroma" = 'darkgreen',
+ "CAF_enriched_stroma" = 'orange',
+ 'Granulocyte_enriched'= 'cyan',
+ 'Myeloid_cell_enriched_immune_infiltrate'= 'sienna',
+ 'Tcell_priming_and_activation'= 'lightgreen',
+ 'B_cell_priming_zone'= 'royalblue',
+ 'Follicle'= 'blue',
+ 'Tumor_boundary'= 'grey',
+ 'Epithelium'= 'magenta',
+ 'Bulk_tumor'= 'navy',
+ 'Plasma_cell_enriched_immune_infiltrate'= 'purple'
+)
+```
+
+### Read in data
+```{r}
+df <- read_csv("/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Data/CODEX/MCC_CN_CT_cleaned_full_for_R.csv")
+df_clin_metadata <- read_excel("/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Data/clinical_metadata/Clin_meta_dict_MCC_280524_TMA_core_num.xlsx")
+```
+### Reshaping the data
+```{r}
+### Rename all CN_annot names for analysis in R
+df$CN_k20_n25_annot <- gsub("B cell priming zone", "B_cell_priming_zone", df$CN_k20_n25_annot )
+df$CN_k20_n25_annot <- gsub("Bulk tumor", "Bulk_tumor", df$CN_k20_n25_annot)
+df$CN_k20_n25_annot <- gsub("CAF-enriched stroma", "CAF_enriched_stroma", df$CN_k20_n25_annot)
+df$CN_k20_n25_annot <- gsub("Granulocyte-enriched", "Granulocyte_enriched", df$CN_k20_n25_annot)
+df$CN_k20_n25_annot <- gsub("Myeloid-cell enriched immune infiltrate", "Myeloid_cell_enriched_immune_infiltrate", df$CN_k20_n25_annot )
+df$CN_k20_n25_annot  <- gsub("Plasma-cell enriched immune infiltrate", "Plasma_cell_enriched_immune_infiltrate", df$CN_k20_n25_annot )
+df$CN_k20_n25_annot <- gsub("T cell priming and activation", "Tcell_priming_and_activation", df$CN_k20_n25_annot )
+df$CN_k20_n25_annot <- gsub("Tumor boundary", "Tumor_boundary", df$CN_k20_n25_annot )
+df$CN_k20_n25_annot <- gsub("Vessel-enriched stroma", "Vessel_enriched_stroma", df$CN_k20_n25_annot)
+
+df$cell_types_lowres <- gsub("B lymphocytes", "B_lymphocytes", df$cell_types_lowres )
+df$cell_types_lowres <- gsub("T lymphocytes", "T_lymphocytes", df$cell_types_lowres)
+df$cell_types_lowres <- gsub("other leukocytes", "other_leukocytes", df$cell_types_lowres)
+df$cell_types_lowres <- gsub("myeloid cells", "myeloid_cells", df$cell_types_lowres)
+```
+
+# Figure 5C: Grouped Boxplots to compare myeloid cell subtype abundance in VP vs VN
+```{r}
+df_filt <- df %>%
+  filter(cell_types_lowres %in% c("myeloid_cells"))
+
+counts_per_x <- "TMA_core_num" #Insert for Patient-specific analysis: Pat_ID or 
+Celltype_column <- "cell_types_highres"
+unique_regions_column <- "unique_core_num"
+
+if (long_compute == TRUE) {
+  # Group by subcluster8 and unique_region and count occurrences
+  df2 <- df_filt %>%
+    group_by_at(c(Celltype_column, unique_regions_column)) %>%
+    summarise(Count = n())
+
+  # Write output to a CSV file
+  # write.csv(df2, paste0(fast_compute_tables, "/", "count_per_region", ".csv"))
+
+  # Reshape the data to wide format with unique_region as rows and subcluster8 as columns
+  df3 <- as.data.frame(acast(df2, as.formula(paste0(unique_regions_column, "~", Celltype_column)), value.var = "Count"))
+  df3$unique_core_num <- rownames(df3)
+
+  # replace NA with 0
+  df3[is.na(df3)] <- 0
+
+  # Write output to a CSV file
+  write.csv(df3, paste0(fast_compute_tables, "/", "count_per_region_wideformat_",counts_per_x, Celltype_column, unique_regions_column, ".csv"))
+} else {
+  df3 <- read_csv(paste0(fast_compute_tables, "/", "count_per_region_wideformat_",counts_per_x, Celltype_column, unique_regions_column, ".csv"))
+}
+
+
+# Combine the clinical metadata and the counts per unique region in a new data frame using a right join
+composite <- right_join(df_clin_metadata, df3,  by = "unique_core_num")
+
+if (long_compute == TRUE) {
+  # Combine columns from "composite" data frame
+  df_intermed <- cbind(composite[, counts_per_x], composite[, (ncol(df_clin_metadata) + 1):ncol(composite)])
+
+  # Rename first column and convert it to a factor
+  names(df_intermed)[1] <- "ID"
+  df_intermed$ID <- as.factor(df_intermed$ID)
+
+  # Create an empty list called "df_list"
+  df_list <- list()
+
+  # Loop through unique values of "ID" in "df_intermed"
+  for (i in df_intermed$ID) {
+    # Filter rows where "ID" matches current loop value
+    df3 <- df_intermed %>% filter(ID == i)
+
+    # Remove first column
+    df3 <- df3[2:ncol(df3)]
+
+    # If there is more than one row in "df3", sum the columns and save as a data frame
+    if (nrow(df3) > 1) {
+      df3[is.na(df3)] <- 0
+      intermed <- as.data.frame(colSums(df3))
+      df_list[[i]] <- t(intermed)
+    }
+
+    # If there is only one row in "df3", save it as a data frame
+    else {
+      intermed <- as.data.frame(df3[1, ])
+      df_list[[i]] <- intermed
+    }
+  }
+
+  # Combine the data frames in "df_list" into one data frame
+  ### Use this line of code for unique_core_num and TMA_core_num
+  #sums <- as.data.frame(do.call(rbind, df_list))
+
+  ### Use in case of using Pat_ID
+  df_list_t <- t(df_list)
+  sums <- as.data.frame(do.call(rbind, df_list_t))
+  rownames(sums) <- colnames(df_list_t)
+
+  # Add a column of row names to "sums"
+  sums <- tibble::rownames_to_column(sums, counts_per_x)
+
+  # Remove first column and replace NA values with 0
+  # Add a column of "ID" values to "total_counts"
+  # Rename the first column of "total_counts"
+  total_counts <- sums[, -1]
+  total_counts[is.na(total_counts)] <- 0
+
+  # Normalize data by row and multiply by 100
+  total_counts_percent <- (total_counts / rowSums(total_counts)) * 100
+
+  total_counts$ID <- sums[, 1]
+  names(total_counts)[names(total_counts) == "ID"] <- counts_per_x
+
+  # Add a column of "ID" values to "total_counts"
+  total_counts_percent$ID <- sums[, 1]
+
+  # Rename the first column of "total_counts"
+  names(total_counts_percent)[names(total_counts_percent) == "ID"] <- counts_per_x
+  
+}
+
+
+total_counts_percent_clin_meta <- left_join(total_counts_percent, df_clin_metadata_TMA_core_num_new, by= "TMA_core_num")
+
+df_long <- total_counts_percent_clin_meta %>%
+  pivot_longer(cols = c(M1_macrophages, M2_macrophages, DC, cDC1, FDC, PMN), names_to = "celltype", values_to = "frequency")
+
+# Create the boxplot with statistical testing
+p <- ggplot(df_long, aes(x = celltype, y = frequency, fill = MCPyV_status_Nolan)) +
+  geom_boxplot() +
+  stat_compare_means(aes(group = MCPyV_status_Nolan), label = "p.signif", method = "t.test", size = 6) +
+  scale_fill_manual(values = c("positive" = "red", "negative" = "royalblue")) +
+  theme_bw() +
+  theme(text = element_text(size = 20, face = "bold"))+
+  geom_point(aes(fill= MCPyV_status_Nolan), size=1,shape=21,position=position_jitterdodge(0.2))
+p
+
+output_dir <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Boxplot_myeloid_cell_comparisons.pdf"
+ggsave(output_dir, plot = p, width = 9, height = 6, dpi = 1600)
+```
+
+
+
+# Figure 5F: Piecharts for macrophages and DC expression of immunoregulatory molecules
+```{r}
+df_macrophages <- df %>%
+  filter(cell_types_mediumres == "macrophages")
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_macrophages %>%
+  group_by(HLADR_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a pie chart
+pie_chart_HLADR_pos <- ggplot(relative_abundance, aes(x = "", y = percentage, fill = HLADR_pos)) +
+  geom_bar(width = 0.5, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%"), angle = 0), 
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("#999999", "#009E73"))+
+  theme_void() +
+  theme(legend.title = element_blank(),
+        legend.position = "right")
+pie_chart_HLADR_pos
+
+save_path <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Immunoregulatory_Proteins_per_CT/"
+filename <- paste0(save_path, "HLADRpos_Mo", ".pdf")
+ggsave(filename, plot = pie_chart_HLADR_pos, width = 4, height = 4, dpi = 1600)
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_macrophages %>%
+  group_by(PDL1_cluster_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a pie chart
+pie_chart_PDL1_pos <- ggplot(relative_abundance, aes(x = "", y = percentage, fill = PDL1_cluster_pos)) +
+  geom_bar(width = 0.5, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%"), angle = 0), 
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("#999999", "#E69F00"))+
+  theme_void() +
+  theme(legend.title = element_blank(),
+        legend.position = "right")
+pie_chart_PDL1_pos
+
+save_path <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Immunoregulatory_Proteins_per_CT/"
+filename <- paste0(save_path, "PDL1pos_Mo", ".pdf")
+ggsave(filename, plot = pie_chart_PDL1_pos, width = 4, height = 4, dpi = 1600)
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_macrophages %>%
+  group_by(CXCL9_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a pie chart
+pie_chart_CXCL9_pos <- ggplot(relative_abundance, aes(x = "", y = percentage, fill = CXCL9_pos)) +
+  geom_bar(width = 0.5, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%"), angle = 0), 
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("#999999", "#D55E00"))+
+  theme_void() +
+  theme(legend.title = element_blank(),
+        legend.position = "right")
+pie_chart_CXCL9_pos
+
+save_path <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Immunoregulatory_Proteins_per_CT/"
+filename <- paste0(save_path, "CXCL9_Mo", ".pdf")
+ggsave(filename, plot = pie_chart_CXCL9_pos, width = 4, height = 4, dpi = 1600)
+
+df_macrophages_PDL1 <- df_macrophages %>%
+  filter(PDL1_cluster_pos == "positive" & HLADR_pos == "positive")
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_macrophages_PDL1 %>%
+  group_by(CXCL9_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+df_DC <- df %>%
+  filter(cell_types_mediumres == "DC")
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_DC %>%
+  group_by(HLADR_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a pie chart
+pie_chart_HLADR_pos <- ggplot(relative_abundance, aes(x = "", y = percentage, fill = HLADR_pos)) +
+  geom_bar(width = 0.5, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%"), angle = 0), 
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("#999999", "#009E73"))+
+  theme_void() +
+  theme(legend.title = element_blank(),
+        legend.position = "right")
+pie_chart_HLADR_pos
+
+save_path <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Immunoregulatory_Proteins_per_CT/"
+filename <- paste0(save_path, "HLADR_DC", ".pdf")
+ggsave(filename, plot = pie_chart_HLADR_pos, width = 4, height = 4, dpi = 1600)
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_DC %>%
+  group_by(PDL1_cluster_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a pie chart
+pie_chart_PDL1_pos <- ggplot(relative_abundance, aes(x = "", y = percentage, fill = PDL1_cluster_pos)) +
+  geom_bar(width = 0.5, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%"), angle = 0), 
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("#999999", "#E69F00"))+
+  theme_void() +
+  theme(legend.title = element_blank(),
+        legend.position = "right")
+pie_chart_PDL1_pos
+
+save_path <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Immunoregulatory_Proteins_per_CT/"
+filename <- paste0(save_path, "PDL1_DC", ".pdf")
+ggsave(filename, plot = pie_chart_PDL1_pos, width = 4, height = 4, dpi = 1600)
+
+# Count occurrences and calculate percentage
+relative_abundance <- df_DC %>%
+  group_by(CXCL9_pos) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+# Create a pie chart
+pie_chart_CXCL9_pos <- ggplot(relative_abundance, aes(x = "", y = percentage, fill = CXCL9_pos)) +
+  geom_bar(width = 0.5, stat = "identity", color = "black") +
+  coord_polar("y", start = 0) +
+  geom_text(aes(label = paste0(round(percentage, 1), "%"), angle = 0), 
+            position = position_stack(vjust = 0.5), size = 5) +
+  scale_fill_manual(values = c("#999999", "#D55E00"))+
+  theme_void() +
+  theme(legend.title = element_blank(),
+        legend.position = "right")
+pie_chart_CXCL9_pos
+
+save_path <- "/Users/maxhaist/Nolan Lab Dropbox/Maximilian Haist/MCC_project/Figures/Figure4/Immunoregulatory_Proteins_per_CT/"
+filename <- paste0(save_path, "CXCL9_DC", ".pdf")
+ggsave(filename, plot = pie_chart_CXCL9_pos, width = 4, height = 4, dpi = 1600)
+```
